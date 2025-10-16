@@ -1,26 +1,45 @@
 ---
 title: "ST558 Assignment 06"
 format: html
-date: today()
+date: 15-Oct-2025
 ---
 
 ## Task 1: Conceptual Questions
 
 1. What is the purpose of the `lapply()` function? What is the equivalent `purrr` function?
 
-2.  Suppose we have a list called `my_list`. Each element of the list is a numeric data frame (all columns are numeric). We want use `lapply()` to run the code `cor(numeric_matrix, method = "kendall")` on each element of the list. Write code to do this below! (I’m really trying to ask you how you specify `method = "kendall"` when calling `lapply()`)
+  `lapply` will take a vector or list `x` and apply a function `FUN` over it, returning a vector the same length as `x`. The `purrr` equivalent is `purrr::map()`.
 
-3. What are two advantages of using purrr functions instead of the `BaseR apply` family?
+2.  Suppose we have a list called `my_list`. Each element of the list is a numeric data frame (all columns are numeric). We want to use `lapply()` to run the code `cor(numeric_matrix, method = "kendall")` on each element of the list. Write code to do this below! 
+
+```{r}
+#| eval: false
+lapply(my_list, cor, method="kendall")
+```
+
+3. What are two advantages of using `purrr` functions instead of the `BaseR apply` family?
+
+  There is greater type stability, and it allows for shorthand with anonymous functions.
 
 4. What is a side-effect function?
 
+  A side-effect function will do more than just to return a value based on inputs - it could change other variables outside of its own environment (like with `<<-`), or print to the console; or some other activity.
+
 5. Why can you name a variable `sd` in a function and not cause any issues with the `sd` function?
+
+  Because of the rules of scoping. If you set, for instance, `sd<-sd(vec)`, it will look for the `sd()` object, not find it set up within the function, and will look one or more levels higher until it finds the function. After the variable `sd` is set, any reference later to `sd` within the function will call the variable and not the higher-level `sd` function. 
 
 ## Task 2: Writing R Functions
 
 1. A common metric used to evaluate predictions is the Root Mean Square Error (RMSE). For a given set of responses $y_1, ..., y_n$ and a set of corresponding predictions for those obserations $\hat{y}_1, ..., \hat{y}_n$ the RMSE is $$RMSE=\sqrt{\frac{1}{n}\sum_{i=1}^{n}(y_i-\hat{y}_i)^2}$$ Write a basic function (call it `getRMSE()`) that takes in a *vector* of responses and a *vector* of predictions and outputs the RMSE.
 
-* If a value is missing for the vector of responses (i.e, an `NA` is present), allow for additional arguments to the `mean()` function (use elipses) that removes the `NA` values in the computation.
+  - If a value is missing for the vector of responses (i.e, an `NA` is present), allow for additional arguments to the `mean()` function (use elipses) that removes the `NA` values in the computation.
+
+```{r}
+getRMSE <- function (responses, predictions, ...) {
+  sqrt(mean((responses - predictions)^2, ...))
+}
+```
 
 2. Run the following code to create some response values and predictions.
 
@@ -32,13 +51,32 @@ resp <- 3 + 10 * x * rnorm(n)
 pred <- predict(lm(resp ~ x), data.frame(x))
 ```
 
-  * Test your RMSE function using this data.
-
-  * Repeat after manuappy replacing two of the response values with missing values (`NA_real_`) (just assign two values to `NA_real_`).
-
-    + Test your RMSE function with and without specifying the behavior to deal with missing values.
+  - Test your RMSE function using this data.
   
-3. Another common metric for evaluatingpredictions is mean absolute deviation given by $$MAE=\frac{1}{n}\sum_{i=1}^{n}|y_i-\hat{y}_i|$$ Write a function called `getMAE()` that follows the specifications of the `getRMSE()` function.
+```{r}
+getRMSE(responses=resp, predictions=pred)
+```
+
+  - Repeat after manually replacing two of the response values with missing values (`NA_real_`) (just assign two values to `NA_real_`).
+
+  + Test your RMSE function with and without specifying the behavior to deal with missing values.
+  
+```{r}
+# Pick 2 numbers 1-100 at random and change those to NA_real
+resp[sample(1:100, 2)] <- NA_real_
+# Just running as-is
+getRMSE(resp, pred)
+# Running once more with instructions to ignore missing values.
+getRMSE(resp, pred, na.rm=TRUE)
+```
+
+3. Another common metric for evaluating predictions is mean absolute deviation given by $$MAE=\frac{1}{n}\sum_{i=1}^{n}|y_i-\hat{y}_i|$$ Write a function called `getMAE()` that follows the specifications of the `getRMSE()` function.
+
+```{r}
+getMAE <- function(responses, predictions, ...) {
+  mean(abs(responses - predictions), ...)
+}
+```
 
 4. Run the following code to create some response values and predictions.
 
@@ -50,21 +88,48 @@ resp <- 3 + 10 * x * rnorm(n)
 pred <- predict(lm(resp ~ x), data.frame(x))
 ```
 
-  * Test your MAE function using this data.
+  - Test your MAE function using this data.
+
+```{r}
+getMAE(resp, pred)
+```
   
-  * Repeat after replacing two of the response vaues with missing values (`NA_real_`).
+  - Repeat after replacing two of the response vaues with missing values (`NA_real_`).
   
-    + Test your MAE function with and without specifying the behavior to deal with missing values.
+  + Test your MAE function with and without specifying the behavior to deal with missing values.
+
+```{r}
+# Pick 2 numbers 1-100 at random and change those to NA_real
+resp[sample(1:100, 2)] <- NA_real_
+# Just running as-is
+getMAE(resp, pred)
+# Running once more with instructions to ignore missing values.
+getMAE(resp, pred, na.rm=TRUE)
+```
     
 5. Let's create a `wrapper` function that can be used to get either or both metrics returned with a single function call. Do not rewrite your above two functions, call them inside the wrapper function (we would call the `getRMSE()` and `getMAE()` functions **helper** functions). When returning your values, give them appropriate names.
 
   Additionally, the wrapper function should:
 
-  * Check that two numeric (atomic) vectors have been passed (consider `is.vector()`, `is.atomic()`, and `is.numeric()`). If not, the function should stop and print an informative message.
+  - Check that two numeric (atomic) vectors have been passed (consider `is.vector()`, `is.atomic()`, and `is.numeric()`). If not, the function should stop and print an informative message.
   
-  * Return both metrics by default and include names. The behavior should be able to be changed using a character string of metrics to find.
-  
-6. Run the following code to create some response values and predcitions.
+  - Return both metrics by default and include names. The behavior should be able to be changed using a character string of metrics to find.
+
+```{r}
+getMetrics <- function (resp, pred, mets=c("RMSE","MAE"), ...) {
+  checks <- c(is.vector, is.atomic, is.numeric)
+  checkResp <- all(sapply(checks, function(f) f(resp)))
+  checkPred <- all(sapply(checks, function(f) f(pred)))
+  if (!checkResp | !checkPred) {
+    stop("Both the Responses and Predictions must be Numeric, Atomic, and Vectors.")
+  }
+  helpers <- list(RMSE=getRMSE, MAE=getMAE)
+  helpers <- helpers[intersect(mets, names(helpers))]
+  lapply(helpers, function(h) h(resp, pred, ...))
+}
+```
+
+6. Run the following code to create some response values and predictions.
 
 ```{r}
 set.seed(10)
@@ -74,11 +139,30 @@ resp <- 3 + 10 * x * rnorm(n)
 pred <- predict(lm(resp ~ x), data.frame(x))
 ```
 
-  * Test your new function using this data. CAll it once asking for each metric individually and once specifying both metrics.
+  - Test your new function using this data. Call it once asking for each metric individually and once specifying both metrics.
+
+```{r}
+# Calling just RMSE
+getMetrics(resp, pred, "RMSE")
+# Calling just MAE
+getMetrics(resp, pred, "MAE")
+# Specifying both, though both would be presented by default
+getMetrics(resp, pred, c("RMSE", "MAE"))
+```
+
+  - Repeat with replacing two of the response values with missing values (`NA_real_`).
   
-  * Repeat with replacing two of the response values with missing values (`NA_real_`).
-  
-  * Finally, test your function by passing it incorrect data (i.e. a data frameor something else instead of vectors)
+```{r}
+# Select two random numbers to replace.
+resp[sample(1:100, 2)] <- NA_real_
+# Specify RMSE, but do not using na.rm here.
+getMetrics(resp, pred, "RMSE")
+# Specify MAE, but DO use na.rm.
+getMetrics(resp, pred, "MAE", na.rm=TRUE)
+# Get both (leave blank) and using na.rm
+getMetrics(resp, pred, na.rm=TRUE)
+```
+  - Finally, test your function by passing it incorrect data (i.e. a data frameor something else instead of vectors)
   
 ## Task 3 - Practice with `purrr`
 
@@ -87,6 +171,13 @@ lm_fit1 <- lm(Sepal.Length ~ Sepal.Width + Species, data=iris)
 ```
 
 1. Pull out the coefficients list element using `$`, `coef()`, and the `pluck()` function from `purrr`.
+
+```{r}
+lm_fit1$coefficients
+coef(lm_fit1)
+library(purrr)
+lm_fit1 |> pluck(coefficients)
+```
 
 2. Fit some different models with the following code:
 
@@ -98,6 +189,10 @@ fits <- list(lm_fit1, lm_fit2, lm_fit3, lm_fit4)
 ```
 
   Use the `purrr:map()` function to pull out the coefficients of each model fit from the `fits` object (using `pluck`!)
+  
+```{r}
+fits |> map(pluck(coefficients))
+```
 
 3. There is a function called `confint()` that creates confidence intervals for the coefficients in an `lm()` fit. We apply that function directly to the fitted object like this:
 
@@ -106,15 +201,30 @@ confint(lm_fit1)
 ```
 
   Use `map()` to apply the `confint()` function to each model fit in the `fits` object.
+
+```{r}
+fits |> map(confint)
+```
   
 4. Let's create histograms of the residuasl in each model fit. Run the code here to set up a 2x2 plotting window.
 
+  Pull out the residual vectors (`resid`) using `map()`. Then use `walk()` function with `hist` to create the plots.
+
 ```{r}
 par(mfrow = c(2,2))
+fits |> 
+  map(resid) |>
+  walk(hist)
 ```
 
-  Pull out the residual vectors (`resid`) using `map()`. Then use `walk()` function with `hist` to create the plots.
-  
 5. On the list that is created from the `map()` function used on the `resid` element, use `purrr::set_names()` to give the names "fit1", "fit2", "fit3", and "fit4" to the list of elements.
 
   With the names set, we want to use the `walk()` function; however it doesn't add the names appropriately. Instead we want `iwalk()`. On the result that has names, use `iwalk()` with an anonymous function that calls `hist()` and assigns the names appropiately.
+  
+```{r}
+par(mfrow = c(2,2))
+fits |> 
+  map(resid) |>
+  set_names(nm=c("fit1","fit2","fit3","fit4")) |>
+  iwalk(\(x, y) hist(x, main=paste("Residuals of", y)))
+```
